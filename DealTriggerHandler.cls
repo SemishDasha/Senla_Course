@@ -12,14 +12,14 @@ public with sharing class DealTriggerHandler {
 
     public void afterUpdate(List<Deal__c> newDeals) {
         for(Deal__c deal : newDeals) {
-            if(deal.Status__c == STATUS_VALUE && deal.RecordTypeId == REC_TYPE) {
+            if(deal.Status__c == STATUS_VALUE && deal.RecordType.Name == REC_TYPE) {
                 PropIdList.add(deal.Property__r);
             }
         }
         for(Property__c prop : PropIdList) {
             for (Deal__c d : prop.Deals__r)
             {
-                if(d.Status__c == 'Open' && d.Status__c == 'Awaiting Approval' && d.RecordTypeId == REC_TYPE) {
+                if(d.Status__c == 'Open' && d.Status__c == 'Awaiting Approval' && d.RecordType.Name == REC_TYPE) {
                     d.Status__c = 'Closed Lost';
                     NotClosedDealList.add(d);
                 }
