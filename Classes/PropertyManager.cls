@@ -32,6 +32,10 @@ public with sharing class PropertyManager {
         return propertiesList;
     }
 
+    public static Property__c getPropertyById(Id id, String fields ) {
+        return Database.query('SELECT ' + fields+ ' FROM Property__c WHERE Id =: id');
+    }
+
     public static List<Property__c> updateProperties(List<Id> ids, PropertyWrapper wrapper, Boolean updating) {
         List<Property__c> propertiesList = [SELECT Name, Address__c, Contact__c, Selling_Price__c, Rent_price__c FROM Property__c WHERE Id IN :ids];
         List<Property__c> updatedPropertiesList = new List<Property__c>();
