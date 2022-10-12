@@ -26,6 +26,9 @@ public with sharing class DealManager {
     public static List<Deal__c> getDealsByIds(List<Id> ids, String field) {
         return Database.query('SELECT ' + field + ' FROM Deal__c WHERE Id IN :ids');
     }
+    public static Deal__c getDealsById(Id id, String fields ) {
+        return Database.query('SELECT ' + fields+ ' FROM Deal__c WHERE Id =: id');
+    }
 
     public static List<Deal__c> updateDeals(List<Id> ids, DealWrapper wrapper, Boolean updating) {
         List<Deal__c> dealsList = [SELECT Name, Buyer__c, Owner_of_property__c, Property__c, Status__c FROM Deal__c WHERE Id IN :ids];
