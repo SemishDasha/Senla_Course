@@ -1,0 +1,149 @@
+/**
+ * Created by semis on 14.10.2022.
+ */
+
+@IsTest
+private class DealManagerTest {
+
+    static final String SALE = Schema.SObjectType.Deal__c.getRecordTypeInfosByName().get('Sale').getRecordTypeId();
+    static final String LEASE = Schema.SObjectType.Deal__c.getRecordTypeInfosByName().get('Lease').getRecordTypeId();
+    static final String OWNER = Schema.SObjectType.Contact.getRecordTypeInfosByName().get('Owner').getRecordTypeId();
+    static final String OPEN = 'Open';
+    static final Integer COUNTER = 2;
+
+    @testSetup
+    static void setup() {
+
+        List<Contact> contactsToInsert = new List<Contact>{
+                new Contact (LastName = 'Test 1',
+                        RecordTypeId = OWNER,
+                        Phone = '+375336337572'),
+                new Contact (LastName = 'Test 2',
+                        RecordTypeId = OWNER,
+                        Phone = '+375293564009'),
+                new Contact (LastName = 'Test 3',
+                        RecordTypeId = OWNER,
+                        Phone = '+375331111111')
+        };
+        insert contactsToInsert;
+        Property__c property = new Property__c(
+                Address__c = 'Limoja',
+                City__c = 'sab',
+                Country__c = 'Ad',
+                Selling_Price__c = 12000,
+                Contact__c = contactsToInsert[1].Id
+        );
+        insert property;
+        List<Deal__c> dealsToInsert = new List<Deal__c>{
+                new Deal__c(
+                        Status__c = OPEN,
+                        Owner_of_property__c = contactsToInsert[1].Id,
+                        Property__c = property.Id,
+                        Buyer__c = contactsToInsert[0].Id,
+                        RecordTypeId = SALE
+                ),
+                new Deal__c(
+                        Status__c = OPEN,
+                        Owner_of_property__c = contactsToInsert[1].Id,
+                        Property__c = property.Id,
+                        Buyer__c = contactsToInsert[0].Id,
+                        RecordTypeId = LEASE
+                ),
+                new Deal__c(
+                        Status__c = OPEN,
+                        Owner_of_property__c = contactsToInsert[1].Id,
+                        Property__c = property.Id,
+                        Buyer__c = contactsToInsert[0].Id,
+                        RecordTypeId = SALE
+                ),
+                new Deal__c(
+                        Status__c = 'Closed',
+                        Owner_of_property__c = contactsToInsert[1].Id,
+                        Property__c = property.Id,
+                        Buyer__c = contactsToInsert[0].Id,
+                        RecordTypeId = LEASE
+                )
+        };
+        insert dealsToInsert;
+    }
+
+    @IsTest
+    static void testGetDealsByIds(){
+
+        List<Deal__c> deals = [SELECT Name, Buyer__c, Owner_of_property__c, Property__c, Status__c FROM Deal__c];
+        List<Id> idsDeals = new List<Id>(new Map<Id, Deal__c>([SELECT Id FROM Deal__c]).keySet());
+
+        List<Deal__c> dealsFromDealManager = DealManager.getDealsByIds(idsDeals, 'Name, Buyer__c, Owner_of_property__c, Property__c, Status__c');
+
+        system.assertEquals(deals,dealsFromDealManager);
+    }
+
+    @IsTest
+    static void testGetDealsById(){
+
+        Deal__c deal = [SELECT Id, Name, Buyer__c, Owner_of_property__c, Property__c, Status__c FROM Deal__c LIMIT 1];
+        Id idsDeal = deal.Id;
+
+        Deal__c dealsFromDealManager = DealManager.getDealsById(idsDeal, 'Id, Name, Buyer__c, Seller__c, Property__c, Status__c');
+
+        system.assertEquals(deal,dealsFromDealManager);
+    }
+
+    @IsTest
+    static void testDeleteDeals(){
+
+        List<Id> idsDeals = new List<Id>(new Map<Id, Deal__c>([SELECT Id FROM Deal__c]).keySet());
+        DealManager.deleteDeals(idsDeals);
+
+        List<Id> idsDealsAfterDelete = new List<Id>(new Map<Id, Deal__c>([SELECT Id FROM Deal__c]).keySet());
+
+        system.assertEquals(0,idsDealsAfterDelete.size());
+    }
+
+    @IsTest
+    static void testCreateDeals(){
+        Property__c property = [SELECT Id FROM Property__c WHERE Address__c = 'Limoja'];
+        Contact buyer = [SELECT Id FROM Contact WHERE LastName = 'Test 1'];
+        Contact seller = [SELECT Id FROM Contact WHERE LastName = 'Test 2'];
+
+        DealManager.DealWrapper wrapper = new DealManager.DealWrapper();
+        wrapper.buyer = buyer.Id;
+        wrapper.owner = seller.Id;
+        wrapper.property = property.Id;
+        wrapper.status = 'Awaiting Approval';
+
+        List<Deal__c> dealsFalseInsert = DealManager.createDeals(wrapper, COUNTER, false);
+        List<Deal__c> dealsNull = [SELECT Id FROM Deal__c WHERE Status__c = 'Awaiting Approval'];
+        System.assertEquals(2, dealsFalseInsert.size());
+        System.assertEquals(0, dealsNull.size());
+
+        List<Deal__c> dealsTrueInsert = DealManager.createDeals(wrapper, COUNTER, true);
+        List<Deal__c> dealsWithInsert = [SELECT Id FROM Deal__c WHERE Status__c = 'Awaiting Approval'];
+        System.assertEquals(2, dealsTrueInsert.size());
+        System.assertEquals(2, dealsWithInsert.size());
+    }
+
+    @IsTest
+    static void testUpdateDeals(){
+        List<Id> idsDeals = new List<Id>(new Map<Id, Deal__c>([SELECT Id FROM Deal__c]).keySet());
+
+        Property__c property = [SELECT Id FROM Property__c WHERE Address__c = 'Limoja'];
+        Contact buyer = [SELECT Id FROM Contact WHERE LastName = 'Test 1'];
+
+        DealManager.DealWrapper wrapper = new DealManager.DealWrapper();
+        wrapper.buyer = buyer.Id;
+        wrapper.property = property.Id;
+        wrapper.status = 'Awaiting Approval';
+
+        List<Deal__c> dealsFalseInsert = DealManager.updateDeals(idsDeals, wrapper, false);
+        List<Deal__c> dealsNull = [SELECT Id FROM Deal__c WHERE Status__c = 'Awaiting Approval'];
+        System.assertEquals(4, dealsFalseInsert.size());
+        System.assertEquals(0, dealsNull.size());
+
+        List<Deal__c> dealsTrueInsert = DealManager.updateDeals(idsDeals, wrapper, true);
+        List<Deal__c> dealsWithInsert = [SELECT Id FROM Deal__c WHERE Status__c = 'Awaiting Approval'];
+        System.assertEquals(4, dealsTrueInsert.size());
+        System.assertEquals(4, dealsWithInsert.size());
+
+    }
+}
